@@ -2,6 +2,7 @@ from flask import Flask, request, redirect, url_for, render_template
 import os
 import json
 import glob
+import zipfile
 from uuid import uuid4
 
 app = Flask(__name__)
@@ -29,6 +30,8 @@ def upload():
     target = "uploadr/static/uploads/{}".format(upload_key)
     try:
         os.mkdir(target)
+        os.mkdir(target + "/input")
+        os.mkdir(target + "/output")
     except:
         if is_ajax:
             return ajax_response(False, "Couldn't create upload directory: {}".format(target))
@@ -45,6 +48,29 @@ def upload():
         print("Accept incoming file:", filename)
         print("Save it to:", destination)
         upload.save(destination)
+
+    # gaoxz
+    print(destination)
+    zf = zipfile.ZipFile(destination, "r")
+    for fileM in zf.namelist():
+        zf.extract(fileM, target + "/input")
+    zf.close()
+
+    # gaoxz2
+    # path = target + "/input"  # 文件夹目录
+    # files = os.listdir(path)  # 得到文件夹下的所有文件名称
+    # s = []
+    # for file in files:  # 遍历文件夹
+    #     if not os.path.isdir(file):  # 判断是否是文件夹，不是文件夹才打开
+    #         f = open(path + "/" + file);  # 打开文件
+    #         iter_f = iter(f);  # 创建迭代器
+    #         temp = ""
+    #         for line in iter_f:  # 遍历文件，一行行遍历，读取文本
+    #             temp = temp + line
+    #         s.append(temp)  # 每个文件的文本存到list中
+
+    input_path = target + "/input"  # 文件夹目录
+    zip_path(input_path, target + "/output", "result.zip")
 
     if is_ajax:
         return ajax_response(True, upload_key)
@@ -66,10 +92,7 @@ def upload_complete(uuid):
         fname = file.split(os.sep)[-1]
         files.append(fname)
 
-    return render_template("files.html",
-        uuid=uuid,
-        files=files,
-    )
+    return render_template("files.html", uuid=uuid, files=files, )
 
 
 def ajax_response(status, msg):
@@ -78,3 +101,21 @@ def ajax_response(status, msg):
         status=status_code,
         msg=msg,
     ))
+
+
+def dfs_get_zip_file(input_path, result):
+    files = os.listdir(input_path)
+    for file in files:
+        if os.path.isdir(input_path+'/' + file):
+            dfs_get_zip_file(input_path + '/' + file, result)
+        else:
+            result.append(input_path + '/' + file)
+
+
+def zip_path(input_path, output_path, output_name):
+    f = zipfile.ZipFile(output_path+'/'+output_name, 'w', zipfile.ZIP_DEFLATED)
+    filelists = []
+    dfs_get_zip_file(input_path, filelists)
+    for file in filelists:
+        f.write(file, file.replace(input_path, ""))
+    f.close()

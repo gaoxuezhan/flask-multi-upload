@@ -3,7 +3,7 @@
  ******************************************************************************/
 
 // Constants
-var MAX_UPLOAD_FILE_SIZE = 1024*1024; // 1 MB
+var MAX_UPLOAD_FILE_SIZE = 1024*1024*10; // 1 MB
 var UPLOAD_URL = "/upload";
 var NEXT_URL   = "/files/";
 
@@ -22,10 +22,6 @@ $(document).ready(function() {
 
     // Handle the submit button.
     $("#upload-button").on("click", function(e) {
-        // If the user has JS disabled, none of this code is running but the
-        // file multi-upload input box should still work. In this case they'll
-        // just POST to the upload endpoint directly. However, with JS we'll do
-        // the POST using ajax and then redirect them ourself when done.
         e.preventDefault();
         doUpload();
     })
