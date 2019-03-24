@@ -6,6 +6,7 @@ import zipfile
 from uuid import uuid4
 from win32com.client import DispatchEx
 from flask import send_file, send_from_directory
+import shutil
 
 import pythoncom
 
@@ -65,6 +66,8 @@ def upload():
             zf.extract(fileM, target + "/input")
     zf.close()
 
+    shutil.copy("c:\\FormMaker.xlsm", target + "/input/FormMaker.xlsm")
+
     # gaoxz2
     pythoncom.CoInitialize()
     path = target + "/input"  # 文件夹目录
@@ -81,7 +84,9 @@ def upload():
 
                 # 打开Excel文件
                 w1 = excel.workbooks.Open(xlsx_fullname)
-                w2 = excel.workbooks.Open('D:\\Normandy\\OperationOverlord\\\OperationPointblank\\FormMaker.xlsm', ReadOnly=1)
+                # w2 = excel.workbooks.Open('D:\\Normandy\\OperationOverlord\\\OperationPointblank\\FormMaker.xlsm', ReadOnly=1)
+                xlsx_fullname = os.path.abspath(target + "/input/FormMaker.xlsm")
+                w2 = excel.workbooks.Open(xlsx_fullname, ReadOnly=1)
 
                 # 其他操作代码
                 # ...
@@ -90,17 +95,15 @@ def upload():
                 excel.Application.Run("FormMaker.xlsm!Module1.gaoxzTest")
 
                 # 关闭Excel文件，不保存(若保存，使用True即可)
-                w1.Close(False)
-                w2.Close(False)
+                # w1.Close(False)
+                # w2.Close(False)
 
                 # 退出Excel
                 excel.Quit()
                 pythoncom.CoUninitialize()
 
     input_path = target + "/input"  # 文件夹目录
-    zip_path(input_path, target + "/output", "result.zip")
-
-    # return download_file(target + "/output", "result.zip")
+    zip_path(target + "/output", target, "gaoxz.zip")
 
     if is_ajax:
         return ajax_response(True, upload_key)
@@ -111,12 +114,6 @@ def upload():
 def download_file(output, filename):
     fullpath = os.path.abspath(output)
     return send_from_directory(fullpath, filename, as_attachment=True)
-
-
-@app.route("/d", methods=['GET'])
-def download_file2():
-    return send_from_directory("D:\\Normandy\\OperationOverlord\\OperationPointblank",
-                               "FormMaker.xlsm", as_attachment=True)
 
 
 @app.route("/files/<uuid>")
@@ -141,16 +138,12 @@ def download(uuid):
     """The location we send them to at the end of the upload."""
 
     # Get their files.
-    root = "uploadr/static/uploads/{}/output".format(uuid)
+    root = "uploadr/static/uploads/{}".format(uuid)
     if not os.path.isdir(root):
         return "Error: UUID not found!"
 
-    # download_file(root, "result.zip")
-
     fullpath = os.path.abspath(root)
-    return send_from_directory(fullpath, "result.zip", as_attachment=True)
-
-
+    return send_from_directory(fullpath, "gaoxz.zip", as_attachment=True)
 
 
 def ajax_response(status, msg):
