@@ -1,0 +1,4 @@
+conda create -n python37 python=3.7
+conda install Flask
+conda install pywin32
+conda install openssl=1.0.2
