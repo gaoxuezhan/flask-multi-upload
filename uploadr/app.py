@@ -4,6 +4,10 @@ import json
 import glob
 import zipfile
 from uuid import uuid4
+from win32com.client import DispatchEx
+from flask import send_file, send_from_directory
+
+import pythoncom
 
 app = Flask(__name__)
 
@@ -42,6 +46,7 @@ def upload():
     for key, value in list(form.items()):
         print(key, "=>", value)
 
+    destination = ""
     for upload in request.files.getlist("file"):
         filename = upload.filename.rsplit("/")[0]
         destination = "/".join([target, filename])
@@ -53,29 +58,65 @@ def upload():
     print(destination)
     zf = zipfile.ZipFile(destination, "r")
     for fileM in zf.namelist():
-        zf.extract(fileM, target + "/input")
+        suffix = os.path.splitext(fileM)[-1]
+        if suffix == ".xlsx":
+            zf.extract(fileM, target + "/input/")
+        else:
+            zf.extract(fileM, target + "/input")
     zf.close()
 
     # gaoxz2
-    # path = target + "/input"  # 文件夹目录
-    # files = os.listdir(path)  # 得到文件夹下的所有文件名称
-    # s = []
-    # for file in files:  # 遍历文件夹
-    #     if not os.path.isdir(file):  # 判断是否是文件夹，不是文件夹才打开
-    #         f = open(path + "/" + file);  # 打开文件
-    #         iter_f = iter(f);  # 创建迭代器
-    #         temp = ""
-    #         for line in iter_f:  # 遍历文件，一行行遍历，读取文本
-    #             temp = temp + line
-    #         s.append(temp)  # 每个文件的文本存到list中
+    pythoncom.CoInitialize()
+    path = target + "/input"  # 文件夹目录
+    files = os.listdir(path)  # 得到文件夹下的所有文件名称
+    for file in files:  # 遍历文件夹
+        if not os.path.isdir(file):  # 判断是否是文件夹，不是文件夹才打开
+            suffix = os.path.splitext(file)[-1]
+            if suffix == ".xlsx":
+                excel = DispatchEx('excel.application')
+                xlsx_fullname = os.path.abspath(target + "/input/" + file)
+                excel.Visible = True
+                excel.DisplayAlerts = False  # 关闭系统警告
+                excel.ScreenUpdating = False  # 关闭屏幕刷新
+
+                # 打开Excel文件
+                w1 = excel.workbooks.Open(xlsx_fullname)
+                w2 = excel.workbooks.Open('D:\\Normandy\\OperationOverlord\\\OperationPointblank\\FormMaker.xlsm', ReadOnly=1)
+
+                # 其他操作代码
+                # ...
+                print(w1.Worksheets(1).Range("G1").Value)
+
+                excel.Application.Run("FormMaker.xlsm!Module1.gaoxzTest")
+
+                # 关闭Excel文件，不保存(若保存，使用True即可)
+                w1.Close(False)
+                w2.Close(False)
+
+                # 退出Excel
+                excel.Quit()
+                pythoncom.CoUninitialize()
 
     input_path = target + "/input"  # 文件夹目录
     zip_path(input_path, target + "/output", "result.zip")
+
+    # return download_file(target + "/output", "result.zip")
 
     if is_ajax:
         return ajax_response(True, upload_key)
     else:
         return redirect(url_for("upload_complete", uuid=upload_key))
+
+
+def download_file(output, filename):
+    fullpath = os.path.abspath(output)
+    return send_from_directory(fullpath, filename, as_attachment=True)
+
+
+@app.route("/d", methods=['GET'])
+def download_file2():
+    return send_from_directory("D:\\Normandy\\OperationOverlord\\OperationPointblank",
+                               "FormMaker.xlsm", as_attachment=True)
 
 
 @app.route("/files/<uuid>")
@@ -93,6 +134,23 @@ def upload_complete(uuid):
         files.append(fname)
 
     return render_template("files.html", uuid=uuid, files=files, )
+
+
+@app.route("/down/<uuid>", methods=['GET'])
+def download(uuid):
+    """The location we send them to at the end of the upload."""
+
+    # Get their files.
+    root = "uploadr/static/uploads/{}/output".format(uuid)
+    if not os.path.isdir(root):
+        return "Error: UUID not found!"
+
+    # download_file(root, "result.zip")
+
+    fullpath = os.path.abspath(root)
+    return send_from_directory(fullpath, "result.zip", as_attachment=True)
+
+
 
 
 def ajax_response(status, msg):

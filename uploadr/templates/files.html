@@ -19,5 +19,9 @@ values were submitted to the server.<p>
     <img src="{{ url_for('static', filename='uploads/{}/{}'.format(uuid, file)) }}">
 {% endfor %}
 
+<br>
+
+<a href="{{url_for('download', uuid='{}'.format(uuid))}}">gaoxz</a>
+
 </body>
 </html>
